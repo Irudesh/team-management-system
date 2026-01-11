@@ -16,10 +16,8 @@ public class Team {
     @Column(name = "description")
     private String description;
 
-    // Constructors
     public Team() {}
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
