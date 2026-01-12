@@ -1,15 +1,15 @@
-package com.teammanagement.service;
+package com.desh.teammanagement.service;
 
-import com.teammanagement.dto.request.TeamMemberRequestDTO;
-import com.teammanagement.dto.response.TeamMemberResponseDTO;
-import com.teammanagement.dto.response.TeamSummaryDTO;
-import com.teammanagement.entity.Team;
-import com.teammanagement.entity.TeamMember;
-import com.teammanagement.exception.DuplicateResourceException;
-import com.teammanagement.exception.InvalidOperationException;
-import com.teammanagement.exception.ResourceNotFoundException;
-import com.teammanagement.repository.TeamMemberRepository;
-import com.teammanagement.repository.TeamRepository;
+import com.desh.teammanagement.dto.request.TeamMemberRequestDTO;
+import com.desh.teammanagement.dto.response.TeamMemberResponseDTO;
+import com.desh.teammanagement.dto.response.TeamSummaryDTO;
+import com.desh.teammanagement.entity.Team;
+import com.desh.teammanagement.entity.TeamMember;
+import com.desh.teammanagement.exception.DuplicateResourceException;
+import com.desh.teammanagement.exception.InvalidOperationException;
+import com.desh.teammanagement.exception.ResourceNotFoundException;
+import com.desh.teammanagement.repository.TeamMemberRepository;
+import com.desh.teammanagement.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,35 +23,20 @@ import java.util.stream.Collectors;
 public class TeamMemberService {
 
     private final TeamMemberRepository memberRepository;
-    private final TeamRepository teamRepository;  // Needed to validate team exists
+    private final TeamRepository teamRepository;
 
-    // ============================================
-    // CREATE
-    // ============================================
-
-    /**
-     * Create new team member
-     *
-     * Business rules:
-     * 1. Email must be unique
-     * 2. If teamId provided, team must exist
-     * 3. All validations from DTO (@NotBlank, @Email) already checked by Spring
-     */
     public TeamMemberResponseDTO createMember(TeamMemberRequestDTO requestDTO) {
-        // Rule 1: Check email uniqueness
         if (memberRepository.existsByEmail(requestDTO.getEmail())) {
             throw new DuplicateResourceException(
                     "Member with email '" + requestDTO.getEmail() + "' already exists"
             );
         }
 
-        // Create new member
         TeamMember member = new TeamMember();
         member.setName(requestDTO.getName());
         member.setEmail(requestDTO.getEmail());
         member.setRole(requestDTO.getRole());
 
-        // Rule 2: If team specified, validate and assign
         if (requestDTO.getTeamId() != null) {
             Team team = teamRepository.findById(requestDTO.getTeamId())
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -60,14 +45,9 @@ public class TeamMemberService {
             member.setTeam(team);
         }
 
-        // Save and return
         TeamMember savedMember = memberRepository.save(member);
         return convertToResponseDTO(savedMember);
     }
-
-    // ============================================
-    // READ
-    // ============================================
 
     @Transactional(readOnly = true)
     public List<TeamMemberResponseDTO> getAllMembers() {
@@ -85,12 +65,8 @@ public class TeamMemberService {
         return convertToResponseDTO(member);
     }
 
-    /**
-     * Get all members of a specific team
-     */
     @Transactional(readOnly = true)
     public List<TeamMemberResponseDTO> getMembersByTeamId(Long teamId) {
-        // First, verify team exists
         if (!teamRepository.existsById(teamId)) {
             throw new ResourceNotFoundException("Team not found with id: " + teamId);
         }
@@ -101,9 +77,6 @@ public class TeamMemberService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get members by role
-     */
     @Transactional(readOnly = true)
     public List<TeamMemberResponseDTO> getMembersByRole(String role) {
         return memberRepository.findByRole(role).stream()
@@ -111,9 +84,6 @@ public class TeamMemberService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Search members by name
-     */
     @Transactional(readOnly = true)
     public List<TeamMemberResponseDTO> searchMembersByName(String keyword) {
         return memberRepository.findByNameContainingIgnoreCase(keyword).stream()
@@ -121,21 +91,12 @@ public class TeamMemberService {
                 .collect(Collectors.toList());
     }
 
-    // ============================================
-    // UPDATE
-    // ============================================
-
-    /**
-     * Update team member
-     */
     public TeamMemberResponseDTO updateMember(Long id, TeamMemberRequestDTO requestDTO) {
-        // Find existing member
         TeamMember member = memberRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Team member not found with id: " + id
                 ));
 
-        // Check email uniqueness (only if email is being changed)
         if (!member.getEmail().equals(requestDTO.getEmail())) {
             if (memberRepository.existsByEmail(requestDTO.getEmail())) {
                 throw new DuplicateResourceException(
@@ -144,12 +105,10 @@ public class TeamMemberService {
             }
         }
 
-        // Update fields
         member.setName(requestDTO.getName());
         member.setEmail(requestDTO.getEmail());
         member.setRole(requestDTO.getRole());
 
-        // Update team if provided
         if (requestDTO.getTeamId() != null) {
             Team team = teamRepository.findById(requestDTO.getTeamId())
                     .orElseThrow(() -> new ResourceNotFoundException(
@@ -157,7 +116,6 @@ public class TeamMemberService {
                     ));
             member.setTeam(team);
         } else {
-            // If teamId is null, remove from current team
             member.setTeam(null);
         }
 
@@ -165,10 +123,6 @@ public class TeamMemberService {
         return convertToResponseDTO(updatedMember);
     }
 
-    /**
-     * Assign member to team
-     * Separate method for just changing team assignment
-     */
     public TeamMemberResponseDTO assignToTeam(Long memberId, Long teamId) {
         TeamMember member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -185,9 +139,6 @@ public class TeamMemberService {
         return convertToResponseDTO(updatedMember);
     }
 
-    /**
-     * Remove member from team (but don't delete member)
-     */
     public TeamMemberResponseDTO removeFromTeam(Long memberId) {
         TeamMember member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -205,10 +156,6 @@ public class TeamMemberService {
         return convertToResponseDTO(updatedMember);
     }
 
-    // ============================================
-    // DELETE
-    // ============================================
-
     public void deleteMember(Long id) {
         if (!memberRepository.existsById(id)) {
             throw new ResourceNotFoundException(
@@ -217,10 +164,6 @@ public class TeamMemberService {
         }
         memberRepository.deleteById(id);
     }
-
-    // ============================================
-    // HELPER METHODS
-    // ============================================
 
     private TeamMemberResponseDTO convertToResponseDTO(TeamMember member) {
         TeamMemberResponseDTO.TeamMemberResponseDTOBuilder builder = TeamMemberResponseDTO.builder()
@@ -231,7 +174,6 @@ public class TeamMemberService {
                 .createdAt(member.getCreatedAt())
                 .updatedAt(member.getUpdatedAt());
 
-        // Include team summary if member has a team
         if (member.getTeam() != null) {
             Team team = member.getTeam();
             TeamSummaryDTO teamSummary = TeamSummaryDTO.builder()

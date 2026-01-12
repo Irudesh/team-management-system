@@ -1,0 +1,16 @@
+package com.desh.teammanagement.dto.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProjectSummaryDTO {
+    private Long id;
+    private String name;
+    private int teamCount;
+}
